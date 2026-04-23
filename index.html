@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en" style="overflow: hidden;"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Art Musings | The Studio</title>
+
+    <link rel="stylesheet" href="https://unpkg.com/easymde/dist/easymde.min.css">
+    <script src="https://unpkg.com/easymde/dist/easymde.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;700&amp;display=swap" rel="stylesheet">
+
+    <style id="main-styles">
+        :root {
+            --bg-color: #fdfcf8;
+            --text-primary: #121212;
+            --text-secondary: #666;
+            --accent-blue: #708bd4;
+            --brand-purple: #90306c;
+            --font-mono: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+            --border-color: #ddd;
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #121212;
+            --text-primary: #e0e0e0;
+            --text-secondary: #aaa;
+            --border-color: #333;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            font-family: var(--font-mono);
+            line-height: 1.6;
+            overflow-x: hidden;
+            transition: background-color 0.4s ease, color 0.4s ease;
+        }
+
+        /* --- VIEWER WORKSPACE --- */
+        #viewer-workspace {
+            display: flex;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container-wrapper {
+            flex: 1;
+            overflow-y: auto;
+            scroll-snap-type: y mandatory;
+            scroll-behavior: smooth;
+        }
+
+        .container {
+            max-width: 900px;
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        .slide {
+            min-height: 100vh;
+            width: 100%;
+            scroll-snap-align: start;
+            display: flex;
+            flex-direction: column;
+            padding: 10vh 2rem;
+            border-bottom: 1px dashed var(--border-color);
+        }
+
+        h1 {
+            font-size: 2.2rem;
+            margin-bottom: 2rem;
+            color: var(--brand-purple);
+        }
+
+        h2 {
+            font-size: 1.5rem;
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        p {
+            margin-bottom: 1.2rem;
+        }
+
+        /* --- Media & Image Styling --- */
+        figure {
+            margin: 2rem 0;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+        }
+
+        .slide img,
+        figure img {
+            max-width: 100%;
+            width: auto;
+            height: auto;
+            max-height: 55vh;
+            /* Prevents vertical images from breaking the slide height */
+            object-fit: contain;
+            /* Keeps aspect ratio perfectly intact */
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            margin: 0 auto;
+            display: block;
+        }
+
+        figcaption {
+            margin-top: 0.8rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+
+        .slide iframe {
+            max-width: 100%;
+            border-radius: 8px;
+            margin: 1rem auto;
+            display: block;
+        }
+
+        /* --- EDITOR WORKSPACE (HIDDEN BY DEFAULT) --- */
+        #editor-workspace {
+            display: none;
+            padding: 5vh 2rem;
+            max-width: 1000px;
+            margin: 0 auto;
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        /* EasyMDE Theme Overrides to match JetBrains */
+        .CodeMirror {
+            background-color: var(--bg-color) !important;
+            color: var(--text-primary) !important;
+            border: 1px solid var(--border-color) !important;
+            font-family: var(--font-mono) !important;
+        }
+
+        .editor-toolbar {
+            background-color: var(--bg-color) !important;
+            border: 1px solid var(--border-color) !important;
+        }
+
+        .editor-toolbar button {
+            color: var(--text-primary) !important;
+        }
+
+        .editor-toolbar button:hover {
+            background: var(--text-primary) !important;
+            color: var(--bg-color) !important;
+        }
+
+        #editor-status {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: var(--text-primary);
+            color: var(--bg-color);
+            padding: 12px 30px;
+            font-size: 0.85rem;
+            display: flex;
+            gap: 25px;
+            align-items: center;
+            justify-content: center;
+            z-index: 5000;
+            border-top: 2px solid var(--brand-purple);
+            transform: translateY(100%);
+            transition: transform 0.3s ease;
+        }
+
+        #editor-status.visible {
+            transform: translateY(0);
+        }
+
+        #editor-status button {
+            background: var(--bg-color);
+            color: var(--text-primary);
+            border: none;
+            padding: 6px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: var(--font-mono);
+            font-weight: bold;
+        }
+
+        #editor-status button:hover {
+            opacity: 0.8;
+        }
+
+        /* --- UI ELEMENTS --- */
+        #theme-switch {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 40px;
+            height: 40px;
+            border: 1px solid var(--text-primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 2001;
+            opacity: 0.5;
+            transition: opacity 0.3s;
+        }
+
+        #theme-switch:hover {
+            opacity: 1;
+            transform: rotate(180deg);
+        }
+
+        #theme-switch::before {
+            content: '◑';
+            font-size: 1.2rem;
+            color: var(--text-primary);
+        }
+
+        /* Custom Password Modal */
+        .art-modal {
+            display: none;
+            position: fixed;
+            z-index: 6000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(5px);
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: var(--bg-color);
+            border: 2px solid var(--text-primary);
+            padding: 30px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 8px 8px 0 var(--brand-purple);
+        }
+
+        .modal-input {
+            width: 100%;
+            padding: 12px;
+            margin: 20px 0;
+            background: transparent;
+            border: 1px solid var(--text-primary);
+            color: var(--text-primary);
+            font-family: var(--font-mono);
+            outline: none;
+        }
+
+        .modal-btn {
+            padding: 10px 20px;
+            cursor: pointer;
+            border: 1px solid var(--text-primary);
+            background: var(--text-primary);
+            color: var(--bg-color);
+            font-family: var(--font-mono);
+        }
+    </style>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/latest/css/font-awesome.min.css">
+</head>
+
+<body data-theme="light" style="overflow: hidden;">
+
+    <div id="theme-switch" onclick="toggleTheme()"></div>
+
+    <div id="viewer-workspace" style="display: flex;">
+        <div class="container-wrapper">
+            <div class="container" id="essay-content"><div class="slide"><figure>
+  <img src="assets/images/block-print-fabric (11).png" alt="desc">
+</figure>
+
+<h1>Why this website is ART</h1>
+<p>Because art is when resources are splurged on making something that you want to make just for the sake of it. </p>
+<ul>
+<li>Aise hi banana tha toh banaya. (<em>I just wanted to make it. So I did.</em>)</li>
+</ul>
+<p><em>That is art.</em></p>
+<p><strong>Scroll down ↓</strong></p>
+</div><div class="slide">
+<p>Hello, I am Munir!</p>
+<p>Let's unpack why I said that:</p>
+<p>It takes <em>a lot</em> of 'freedom' to do art. <strong>Freedom</strong> To waste resources. </p>
+</div><div class="slide">
+<p>Very simply, some <em>bahut purani</em> (very old) societies were formed in order to get some <em><strong>freedom</strong></em> but kabhi toh you just couldn't - pregnancy, injury, caretaking, old age etc.ke liye (for which) you had to take time off from producing/foraging resources. </p>
+<p>Resources - food, fuel, shelter and clothing - were necessary to live. Gathering these takes <em>energy -</em> a lot of which came from food itself, fire made it easier to access that food energy, and shelter and clothing helped survive longer - but took energy to make.</p>
+<p>All this energy gives <em>freedom</em> to not die from hunger or environment. Some may call this earliest phase of 'history', atleast John Richard Hicks of <em>A theory of Economic History</em> (1969) would say this.[^1]</p>
+<p><strong>Reader</strong>: So, wait, why the economic and energy history lesson? </p>
+<p><strong>Munir:</strong> Because that's what I know? I don't know. This is my version of art, obviously it has economic history and a lot of ramblings. You are welcome to stay. </p>
+<p><strong>Reader:</strong> Why are we talking like this? </p>
+<p><strong>Munir:</strong> I might tell you in the end, if you stick long enough, you will know.</p>
+<p><em>Keep scrolling!</em></p>
+<p><em>WORK IN PROGRESS. 👷</em></p>
+</div><div class="slide">
+<h3>Footnotes</h3>
+<p>[^1]: Hicks argues that the core of economic history is the rise of the market and the specialization it allows. We aren't talking about Marx here. Just saying 🤷‍♂️. For this perspective on energy and more: See: Vaclav Smil. <em>Energy in World History</em> (1994)</p>
+</div></div>
+        </div>
+    </div>
+
+    <div id="editor-workspace" style="display: none;">
+        <h2 style="color: var(--brand-purple); margin-bottom: 20px;">Writer Mode</h2>
+        <textarea id="my-editor" style=""></textarea>
+    </div>
+
+    <div id="editor-status" class="">
+        <span>Writer Mode Active</span>
+        <button onclick="saveAndPackageHTML()">Save &amp; Package HTML</button>
+        <button onclick="cancelEditor()" style="background: transparent; border: 1px solid var(--bg-color); color: var(--bg-color);">Cancel</button>
+    </div>
+
+    <div id="art-modal" class="art-modal" style="display: none;">
+        <div class="modal-content">
+            <h3 id="modal-title">Access Code Required:</h3>
+            <input type="password" id="modal-input" class="modal-input">
+            <div style="display: flex; gap: 15px; justify-content: flex-end;">
+                <button onclick="closeModal()" class="modal-btn" style="background: transparent; color: var(--text-primary);">Cancel</button>
+                <button id="modal-ok" class="modal-btn">Unlock</button>
+            </div>
+        </div>
+    </div>
+
+    <textarea id="source-markdown" style="display:none;">&lt;figure&gt;
+  &lt;img src="assets/images/block-print-fabric (11).png" alt="desc"&gt;
+&lt;/figure&gt;
+
+# Why this website is ART
+
+Because art is when resources are splurged on making something that you want to make just for the sake of it. 
+
+* Aise hi banana tha toh banaya. (*I just wanted to make it. So I did.*)
+
+*That is art.*
+
+**Scroll down ↓**
+
+---
+
+Hello, I am Munir!
+
+Let's unpack why I said that:
+
+It takes *a lot* of 'freedom' to do art. **Freedom** To waste resources. 
+
+---
+
+Very simply, some *bahut purani* (very old) societies were formed in order to get some ***freedom*** but kabhi toh you just couldn't - pregnancy, injury, caretaking, old age etc.ke liye (for which) you had to take time off from producing/foraging resources. 
+
+Resources - food, fuel, shelter and clothing - were necessary to live. Gathering these takes *energy -* a lot of which came from food itself, fire made it easier to access that food energy, and shelter and clothing helped survive longer - but took energy to make.
+
+All this energy gives *freedom* to not die from hunger or environment. Some may call this earliest phase of 'history', atleast John Richard Hicks of *A theory of Economic History* (1969) would say this.[^1]
+
+**Reader**: So, wait, why the economic and energy history lesson? 
+
+**Munir:** Because that's what I know? I don't know. This is my version of art, obviously it has economic history and a lot of ramblings. You are welcome to stay. 
+
+**Reader:** Why are we talking like this? 
+
+**Munir:** I might tell you in the end, if you stick long enough, you will know.
+
+*Keep scrolling!*
+
+*WORK IN PROGRESS. 👷*
+
+---
+
+### Footnotes
+[^1]: Hicks argues that the core of economic history is the rise of the market and the specialization it allows. We aren't talking about Marx here. Just saying 🤷‍♂️. For this perspective on energy and more: See: Vaclav Smil. *Energy in World History* (1994)</textarea>
+
+    <script>
+        let isEditorEnabled = false;
+        let easymdeInstance = null;
+
+        // --- 1. INITIAL LOAD & RENDER ---
+        function renderViewer() {
+            const rawMd = document.getElementById('source-markdown').textContent;
+
+            // Parse Markdown to HTML
+            const rawHtml = marked.parse(rawMd);
+
+            // Split HTML by <hr> (which is generated by '---' in markdown) to create slides
+            const slidesHTML = rawHtml.split('<hr>').map(slideContent => {
+                return `<div class="slide">${slideContent}</div>`;
+            }).join('');
+
+            document.getElementById('essay-content').innerHTML = slidesHTML;
+        }
+
+        // Render immediately on page load
+        document.addEventListener('DOMContentLoaded', renderViewer);
+
+        // --- 2. SECRET UNLOCK LOGIC ---
+        let keyBuffer = '';
+        let tapCount = 0;
+        let tapTimeout;
+
+        // Keyboard unlock ('hello')
+        document.addEventListener('keypress', (e) => {
+            if (isEditorEnabled) return;
+            keyBuffer += e.key.toLowerCase();
+            if (keyBuffer.endsWith('hello')) {
+                promptUnlock();
+                keyBuffer = '';
+            }
+            if (keyBuffer.length > 20) keyBuffer = keyBuffer.substring(10);
+        });
+
+        // Mobile touch unlock (5 taps)
+        document.addEventListener('touchstart', (e) => {
+            if (isEditorEnabled) return;
+            tapCount++;
+            clearTimeout(tapTimeout);
+            if (tapCount >= 5) {
+                promptUnlock();
+                tapCount = 0;
+            }
+            tapTimeout = setTimeout(() => { tapCount = 0; }, 1000);
+        });
+
+        function promptUnlock() {
+            document.getElementById('art-modal').style.display = 'flex';
+            const input = document.getElementById('modal-input');
+            input.value = '';
+            input.focus();
+
+            document.getElementById('modal-ok').onclick = () => {
+                if (input.value === 'art') {
+                    closeModal();
+                    openEditor();
+                } else {
+                    alert("Access Denied.");
+                    closeModal();
+                }
+            };
+        }
+
+        function closeModal() {
+            document.getElementById('art-modal').style.display = 'none';
+        }
+
+        // --- 3. EDITOR MODE ---
+        function openEditor() {
+            isEditorEnabled = false;
+
+            // Swap Workspaces
+            document.getElementById('viewer-workspace').style.display = 'none';
+            document.getElementById('editor-workspace').style.display = 'block';
+            document.getElementById('editor-status').classList.add('visible');
+
+            // Load current markdown into the editor textarea
+            const currentMd = document.getElementById('source-markdown').textContent;
+            document.getElementById('my-editor').value = currentMd;
+
+            // Initialize EasyMDE
+            easymdeInstance = new EasyMDE({
+                element: document.getElementById('my-editor'),
+                spellChecker: false,
+                renderingConfig: { singleLineBreaks: false, codeSyntaxHighlighting: true },
+                toolbar: [
+                    "bold", "italic", "heading", "|",
+                    "quote", "unordered-list", "ordered-list", "|",
+                    "link",
+                    {
+                        name: "custom-image",
+                        action: function (editor) {
+                            const cm = editor.codemirror;
+                            cm.replaceSelection(`\n<figure>\n  <img src="PASTE_IMAGE_URL_HERE" alt="Image description">\n  <figcaption>📸 Add your image caption here</figcaption>\n</figure>\n`);
+                        },
+                        className: "fa fa-picture-o",
+                        title: "Insert Image HTML with Caption",
+                    },
+                    {
+                        name: "custom-iframe",
+                        action: function (editor) {
+                            const cm = editor.codemirror;
+                            cm.replaceSelection(`\n<figure class="art-piece" style="margin: 20px 0;">\n  <iframe src="PASTE_EMBED_URL_HERE" width="100%" height="152" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"></iframe>\n  <figcaption>🎵 Add your embed caption here</figcaption>\n</figure>\n`);
+                        },
+                        className: "fa fa-headphones",
+                        title: "Insert Embed/Music Iframe with Caption",
+                    },
+                    "|",
+                    {
+                        name: "page-break",
+                        action: function (editor) {
+                            const cm = editor.codemirror;
+                            cm.replaceSelection(`\n\n---\n\n`); // Adds a horizontal rule for slide breaks
+                        },
+                        className: "fa fa-scissors",
+                        title: "Add Slide Break (---)",
+                    },
+                    "|", "preview", "side-by-side", "fullscreen"
+                ]
+            });
+        }
+
+        function cancelEditor() {
+            if (confirm("Discard unsaved changes?")) {
+                location.reload(); // Quickest way to clean up and go back to viewer
+            }
+        }
+
+        // --- 4. SAVE & PACKAGE HTML ---
+        function saveAndPackageHTML() {
+            // 1. Get the updated markdown
+            const updatedMd = easymdeInstance.value();
+
+            // 2. Destroy Editor to clean the DOM
+            easymdeInstance.toTextArea();
+            easymdeInstance = null;
+
+            // 3. Save Markdown to the hidden source element permanently
+            const sourceArea = document.getElementById('source-markdown');
+            sourceArea.textContent = updatedMd; // MUST be textContent so it embeds cleanly in outerHTML
+
+            // 4. Update the viewer
+            renderViewer();
+
+            // 5. Hide editor UI, restore Viewer UI
+            document.getElementById('editor-workspace').style.display = 'none';
+            document.getElementById('viewer-workspace').style.display = 'flex';
+            document.getElementById('editor-status').classList.remove('visible');
+            isEditorEnabled = false;
+
+            // 6. Download the whole file!
+            const htmlContent = "<!DOCTYPE html>\n" + document.documentElement.outerHTML;
+            const blob = new Blob([htmlContent], { type: 'text/html' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'index.html'; // Default filename
+            a.click();
+            URL.revokeObjectURL(a.href);
+        }
+
+        // --- THEME TOGGLE ---
+        function toggleTheme() {
+            const body = document.body;
+            const newTheme = body.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+            body.setAttribute('data-theme', newTheme);
+        }
+    </script>
+
+
+
+
+</body></html>
