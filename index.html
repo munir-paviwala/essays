@@ -429,9 +429,13 @@ All this energy gives *freedom* to not die from hunger or environment. Some may 
             if (keyBuffer.length > 20) keyBuffer = keyBuffer.substring(10);
         });
 
-        // Mobile touch unlock (10 taps)
+        // Mobile touch unlock (10 taps on heading)
         document.addEventListener('touchstart', (e) => {
             if (isEditorEnabled) return;
+            
+            // Only recognize taps on the main heading
+            if (e.target.tagName !== 'H1') return;
+            
             tapCount++;
             clearTimeout(tapTimeout);
             if (tapCount >= 10) {
